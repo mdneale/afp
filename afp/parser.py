@@ -29,17 +29,9 @@ logger = logging.getLogger(__name__)
 CARRIAGE_CONTROL_CHAR = 0x5A
 PTX_ESCAPE_SEQUENCE = 0x2BD3
 
-CS_LENGTH_KEY = 'LENGTH'
-CS_TYPE_KEY = 'TYPE'
-EXCEPTIONS_KEY = '_exceptions'
-EXT_DATA_KEY = 'ExtData'
-EXT_LENGTH_KEY = 'ExtLength'
-FLAG_BYTE_KEY = 'FlagByte'
-REPEATING_GROUP_KEY = 'RepeatingGroup'
-SF_LENGTH_KEY = 'SFLength'
-SF_TYPE_ID_KEY = 'SFTypeID'
-T_ID_KEY = 'Tid'
-T_LENGTH_KEY = 'Tlength'
+# Parameter Names
+PNAME_EXCEPTIONS = '_exceptions'
+PNAME_REPEATING_GROUP = 'RepeatingGroup'
 
 MODCA_CLASS_CODE = 0xD3
 
@@ -209,8 +201,8 @@ def parse_triplets(data, parser_config, offset=0):
         if triplet_type is not None and triplet_type.syntax is not None:
             syntax = triplet_type.syntax
         triplet, bytes_processed = parse_syntax(contents, syntax, parser_config)
-        triplet[T_LENGTH_KEY] = t_length
-        triplet[T_ID_KEY] = t_id
+        triplet[triplets.PNAME_T_LENGTH] = t_length
+        triplet[triplets.PNAME_T_ID] = t_id
         triplet_list.append(triplet)
         logger.debug('Triplet: {0}'.format(triplet))
         p += t_length
@@ -270,8 +262,8 @@ def parse_ptoca(data, parser_config, offset=0):
         if fn_info is not None and fn_info.syntax is not None:
             syntax = fn_info.syntax
         ctrl_sequence, bytes_processed = parse_syntax(function_data, syntax, parser_config)
-        ctrl_sequence[CS_LENGTH_KEY] = length
-        ctrl_sequence[CS_TYPE_KEY] = function
+        ctrl_sequence[functions.PNAME_CS_LENGTH] = length
+        ctrl_sequence[functions.PNAME_CS_TYPE] = function
         ctrl_sequences.append(ctrl_sequence)
         logger.debug('Control Sequence: {0}'.format(ctrl_sequence))
         chained = functions.chained_function(function)
@@ -317,9 +309,9 @@ def _add_exception(e, result):
     e - The exception
     result - The parse result dictionary to add the exception to.
     """
-    if EXCEPTIONS_KEY not in result:
-        result[EXCEPTIONS_KEY] = []
-    result[EXCEPTIONS_KEY].append((e.modca_code, str(e)))
+    if PNAME_EXCEPTIONS not in result:
+        result[PNAME_EXCEPTIONS] = []
+    result[PNAME_EXCEPTIONS].append((e.modca_code, str(e)))
 
 def parse_syntax(data, syntax, parser_config, result=None, param_appearance_counters=None):
     """Parse a syntax - this can be a structured field, a triplet or a PTOCA
@@ -380,7 +372,7 @@ def parse_syntax(data, syntax, parser_config, result=None, param_appearance_coun
                     value.append(nested_group_result)
                     repeating_group_offset += bytes_processed
                 if len(value) > 0:
-                    unique_name = _add_param(REPEATING_GROUP_KEY, value, result, param_appearance_counters)
+                    unique_name = _add_param(PNAME_REPEATING_GROUP, value, result, param_appearance_counters)
                     logger.debug('Parameter: {0} ({1}, 0) => <{2}>'.format(
                         unique_name,
                         next_field_offset,
@@ -491,40 +483,46 @@ def read_structured_field(f, parser_config):
                                            fields.SYNTAX_SFI,
                                            parser_config,
                                            param_appearance_counters=param_appearance_counters)
-        sf[SF_LENGTH_KEY] = sf_length
-        if (sf[SF_TYPE_ID_KEY] & 0xFF0000) >> 16 != MODCA_CLASS_CODE:
-            raise exceptions.UnrecognizedIdentifierCodeError('Unrecognized class code 0x{0:06X} - MO:DCA uses class code 0x{1:02X}'.format(sf[SF_TYPE_ID_KEY], MODCA_CLASS_CODE))
+        sf[fields.PNAME_SF_LENGTH] = sf_length
+        if (sf[fields.PNAME_SF_TYPE_ID] & 0xFF0000) >> 16 != MODCA_CLASS_CODE:
+            raise exceptions.UnrecognizedIdentifierCodeError('Unrecognized class code 0x{0:06X} - MO:DCA uses class code 0x{1:02X}'.format(sf[fields.PNAME_SF_TYPE_ID], MODCA_CLASS_CODE))
         # The parser doesn't currently support structured field padding
-        if fields.sfi_pad_flag(sf[FLAG_BYTE_KEY]):
+        if fields.sfi_pad_flag(sf[fields.PNAME_FLAG_BYTE]):
             raise exceptions.PaddingNotImplementedError('Structured Field padding is not supported')
         # Find the structured field type info
         sf_type = None
-        if sf[SF_TYPE_ID_KEY] in fields.SF_TYPES:
-            sf_type = fields.SF_TYPES[sf[SF_TYPE_ID_KEY]]
+        if sf[fields.PNAME_SF_TYPE_ID] in fields.SF_TYPES:
+            sf_type = fields.SF_TYPES[sf[fields.PNAME_SF_TYPE_ID]]
         elif not parser_config.allow_unknown_fields:
-            raise exceptions.UnrecognizedStructuredFieldError('Unrecognized structured field 0x{0:06X}'.format(sf[SF_TYPE_ID_KEY]))
+            raise exceptions.UnrecognizedStructuredFieldError('Unrecognized structured field 0x{0:06X}'.format(sf[fields.PNAME_SF_TYPE_ID]))
         description = ''
         if sf_type is not None:
             description = ' ({0.abbreviation} {0.name})'.format(sf_type)
-        logger.debug("""    SFLength: {0}
-          SFTypeID: 0x{1:06X}{2}
-          FlagByte: 0x{3:02X}
-              ExtFlag: {4}
-              SegFlag: {5}
-              PadFlag: {6}""".format(sf[SF_LENGTH_KEY],
-                                     sf[SF_TYPE_ID_KEY],
+        logger.debug("""    {0}: {1}
+          {2}: 0x{3:06X}{4}
+          {5}: 0x{6:02X}
+              ExtFlag: {7}
+              SegFlag: {8}
+              PadFlag: {9}""".format(fields.PNAME_SF_LENGTH,
+                                     sf[fields.PNAME_SF_LENGTH],
+                                     fields.PNAME_SF_TYPE_ID,
+                                     sf[fields.PNAME_SF_TYPE_ID],
                                      description,
-                                     sf[FLAG_BYTE_KEY],
-                                     fields.sfi_ext_flag(sf[FLAG_BYTE_KEY]),
-                                     fields.sfi_seg_flag(sf[FLAG_BYTE_KEY]),
-                                     fields.sfi_pad_flag(sf[FLAG_BYTE_KEY])))
-        if fields.sfi_ext_flag(sf[FLAG_BYTE_KEY]):
-            logger.debug("""    ExtLength: {0}
-    ExtData: {1}""".format(sf[EXT_LENGTH_KEY], sf[EXT_DATA_KEY]))
+                                     fields.PNAME_FLAG_BYTE,
+                                     sf[fields.PNAME_FLAG_BYTE],
+                                     fields.sfi_ext_flag(sf[fields.PNAME_FLAG_BYTE]),
+                                     fields.sfi_seg_flag(sf[fields.PNAME_FLAG_BYTE]),
+                                     fields.sfi_pad_flag(sf[fields.PNAME_FLAG_BYTE])))
+        if fields.sfi_ext_flag(sf[fields.PNAME_FLAG_BYTE]):
+            logger.debug("""    {0}: {1}
+    {2}: {3}""".format(fields.PNAME_EXT_LENGTH,
+                       sf[fields.PNAME_EXT_LENGTH],
+                       fields.PNAME_EXT_DATA,
+                       sf[fields.PNAME_EXT_DATA]))
         # Get the rest of the field data
         field_data_start = 6
-        if fields.sfi_ext_flag(sf[FLAG_BYTE_KEY]):
-            field_data_start += sf[EXT_LENGTH_KEY]
+        if fields.sfi_ext_flag(sf[fields.PNAME_FLAG_BYTE]):
+            field_data_start += sf[fields.PNAME_EXT_LENGTH]
         field_data = data[field_data_start:]
         # Parse the field data
         syntax = fields.SYNTAX_FIELD_RAW

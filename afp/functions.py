@@ -23,6 +23,10 @@ import collections
 
 from . import fields
 
+# Property Names
+PNAME_CS_LENGTH = 'LENGTH'
+PNAME_CS_TYPE = 'TYPE'
+
 # Any function not explicity defined
 SYNTAX_FUNCTION_RAW = [
     fields.ParameterType(0, 0, fields.PTYPE_BYTE, 'DATA',     True,  None),

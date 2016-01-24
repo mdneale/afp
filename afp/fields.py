@@ -41,6 +41,14 @@ PARAM_TYPE_NAMES = {
     PTYPE_PTOCA:   'PTOCA',
 }
 
+# Parameter Names
+PNAME_EXT_DATA = 'ExtData'
+PNAME_EXT_LENGTH = 'ExtLength'
+PNAME_FLAG_BYTE = 'FlagByte'
+PNAME_SF_LENGTH = 'SFLength'
+PNAME_SF_TYPE_ID = 'SFTypeID'
+PNAME_TRIPLETS = 'Triplets'
+
 # A parameter of a structured field, triplet or control sequence function
 # offset - The byte number where the parameter begins
 # length - The number of bytes making up the parameter
@@ -59,7 +67,7 @@ ParameterType = collections.namedtuple('ParameterType',
 # Normally a preprocess function should return the parameter from the syntax
 # being processed, i.e. the param argument.
 
-def _next_group_length(field, param):
+def _next_group_length(sf, param):
     """Tells the parser that this parameter contains the length of the
     forthcoming repeating group.
 
@@ -68,7 +76,7 @@ def _next_group_length(field, param):
     group itself.
 
     Arguments:
-    field - A dictionary containing the structured field parsed so far
+    sf - A dictionary containing the structured field parsed so far
     param - The parameter in the syntax being processed
 
     Returns:
@@ -76,7 +84,7 @@ def _next_group_length(field, param):
     """
     return param
 
-def _this_group_length(field, param):
+def _this_group_length(sf, param):
     """Tells the parser that this parameter contains the length of the current
     repeating group.
 
@@ -85,7 +93,7 @@ def _this_group_length(field, param):
     group itself.
 
     Arguments:
-    field - A dictionary containing the structured field parsed so far
+    sf - A dictionary containing the structured field parsed so far
     param - The parameter in the syntax being processed
 
     Returns:
@@ -93,46 +101,51 @@ def _this_group_length(field, param):
     """
     return param
 
-def _suppress_if_no_extension(field, param):
+def _suppress_if_no_extension(sf, param):
     """Suppress the parameter if the Structure Field Introducer has no extension.
 
     Arguments:
-    field - A dictionary containing the structured field parsed so far
+    sf - A dictionary containing the structured field parsed so far
     param - The parameter in the syntax being processed
 
     Returns:
     The parameter in the syntax being processed or None if we wish to suppress
     the parameter.
     """
-    if sfi_ext_flag(field['FlagByte']):
+    if sfi_ext_flag(sf[PNAME_FLAG_BYTE]):
         return param
     else:
         return None
 
-def _set_extension_length(field, param):
+def _set_extension_length(sf, param):
     """Return the Structured Field Introducer ExtData parameter with the correct
     length attribute set as found in the ExtLength parameter.
 
     Arguments:
-    field - A dictionary containing the structured field parsed so far
+    sf - A dictionary containing the structured field parsed so far
     param - The parameter in the syntax being processed
 
     Returns:
     The Structured Field Introducer ExtData parameter with the length attribute
     set, or None if the Structured Field Introducer has no extension.
     """
-    if sfi_ext_flag(field['FlagByte']):
-        return ParameterType(param.offset, field['ExtLength'] - 1, param.datatype, param.name, param.mandatory, param.preproc)
+    if sfi_ext_flag(sf[PNAME_FLAG_BYTE]):
+        return ParameterType(param.offset,
+                             sf[PNAME_EXT_LENGTH] - 1,
+                             param.datatype,
+                             param.name,
+                             param.mandatory,
+                             param.preproc)
     else:
         return None
 
 # Structured Field Introducer
 SYNTAX_SFI = [
-    ParameterType(0,  3,  PTYPE_CODE,    'SFTypeID',  True,  None),
-    ParameterType(3,  1,  PTYPE_BYTE,    'FlagByte',  True,  None),
-    ParameterType(4,  2,  PTYPE_BYTE,    'Reserved',  True,  None),
-    ParameterType(6,  1,  PTYPE_UBIN,    'ExtLength', True,  _suppress_if_no_extension),
-    ParameterType(7,  0,  PTYPE_BYTE,    'ExtData',   True,  _set_extension_length),
+    ParameterType(0,  3,  PTYPE_CODE,    PNAME_SF_TYPE_ID, True,  None),
+    ParameterType(3,  1,  PTYPE_BYTE,    PNAME_FLAG_BYTE,  True,  None),
+    ParameterType(4,  2,  PTYPE_BYTE,    'Reserved',       True,  None),
+    ParameterType(6,  1,  PTYPE_UBIN,    PNAME_EXT_LENGTH, True,  _suppress_if_no_extension),
+    ParameterType(7,  0,  PTYPE_BYTE,    PNAME_EXT_DATA,   True,  _set_extension_length),
 ]
 
 # Any structured field not explicity defined
@@ -144,24 +157,24 @@ SYNTAX_FIELD_RAW = [
 # 1. Define its syntax here...
 
 SYNTAX_FIELD_BAG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'AEGName',   False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'AEGName',      False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BDG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'DEGName',   False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'DEGName',      False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BDI = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'IndxName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'IndxName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BDT = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'DocName',   True,  None),
-    ParameterType(8,  2,  PTYPE_BYTE,    'Reserved',  True,  None),
-    ParameterType(10, 0,  PTYPE_TRIPLET, 'Triplets',  True,  None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'DocName',      True,  None),
+    ParameterType(8,  2,  PTYPE_BYTE,    'Reserved',     True,  None),
+    ParameterType(10, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
 ]
 
 SYNTAX_FIELD_BFG = [
@@ -169,39 +182,39 @@ SYNTAX_FIELD_BFG = [
 ]
 
 SYNTAX_FIELD_BFM = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'FMName',    False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'FMName',       False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BMM = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'MMName',    True,  None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'MMName',       True,  None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BNG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PGrpName',  True,  None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PGrpName',     True,  None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BPG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PageName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PageName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BPT = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PTdoName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PTdoName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BRG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'RGrpName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'RGrpName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_BRS = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'RSName',    True,  None),
-    ParameterType(8,  2,  PTYPE_BYTE,    'Reserved',  True,  None),
-    ParameterType(10, 0,  PTYPE_TRIPLET, 'Triplets',  True,  None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'RSName',       True,  None),
+    ParameterType(8,  2,  PTYPE_BYTE,    'Reserved',     True,  None),
+    ParameterType(10, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
 ]
 
 SYNTAX_FIELD_CTC = [
@@ -217,13 +230,13 @@ SYNTAX_FIELD_EDG = [
 ]
 
 SYNTAX_FIELD_EDI = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'IndxName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'IndxName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_EDT = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'DocName',   False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'DocName',      False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_EFG = [
@@ -239,23 +252,23 @@ SYNTAX_FIELD_EMM = [
 ]
 
 SYNTAX_FIELD_ENG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PGrpName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PGrpName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_EPG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PageName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PageName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_EPT = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PTdoName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PTdoName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_ERG = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'RGrpName',  False, None),
-    ParameterType(8,  0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'RGrpName',     False, None),
+    ParameterType(8,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_ERS = [
@@ -263,22 +276,22 @@ SYNTAX_FIELD_ERS = [
 ]
 
 SYNTAX_FIELD_IEL = [
-    ParameterType(0,  0,  PTYPE_TRIPLET, 'Triplets',  True,  None),
+    ParameterType(0,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
 ]
 
 SYNTAX_FIELD_IPO = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'OvlyName',  True,  None),
-    ParameterType(8,  3,  PTYPE_SBIN,    'XolOset',   True,  None),
-    ParameterType(11, 3,  PTYPE_SBIN,    'YolOset',   True,  None),
-    ParameterType(14, 2,  PTYPE_CODE,    'OvlyOrent', False, None),
-    ParameterType(16, 0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'OvlyName',     True,  None),
+    ParameterType(8,  3,  PTYPE_SBIN,    'XolOset',      True,  None),
+    ParameterType(11, 3,  PTYPE_SBIN,    'YolOset',      True,  None),
+    ParameterType(14, 2,  PTYPE_CODE,    'OvlyOrent',    False, None),
+    ParameterType(16, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_IPS = [
-    ParameterType(0,  8,  PTYPE_CHAR,    'PsegName',  True,  None),
-    ParameterType(8,  3,  PTYPE_SBIN,    'XpsOset',   True,  None),
-    ParameterType(11, 3,  PTYPE_SBIN,    'YpsOset',   True,  None),
-    ParameterType(14, 0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  8,  PTYPE_CHAR,    'PsegName',     True,  None),
+    ParameterType(8,  3,  PTYPE_SBIN,    'XpsOset',      True,  None),
+    ParameterType(11, 3,  PTYPE_SBIN,    'YpsOset',      True,  None),
+    ParameterType(14, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_MCC = [
@@ -292,8 +305,8 @@ SYNTAX_FIELD_MCC = [
 
 SYNTAX_FIELD_MCF = [
     [
-        ParameterType(0,  2,  PTYPE_UBIN,    'RGLength', True,  _this_group_length),
-        ParameterType(2,  0,  PTYPE_TRIPLET, 'Triplets', True,  None),
+        ParameterType(0,  2,  PTYPE_UBIN,    'RGLength',     True,  _this_group_length),
+        ParameterType(2,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
     ],
 ]
 
@@ -313,14 +326,14 @@ SYNTAX_FIELD_MCF_1 = [
 ]
 
 SYNTAX_FIELD_MDD = [
-    ParameterType(0,  1,  PTYPE_CODE,    'XmBase',    True,  None),
-    ParameterType(1,  1,  PTYPE_CODE,    'YmBase',    True,  None),
-    ParameterType(2,  2,  PTYPE_UBIN,    'XmUnits',   True,  None),
-    ParameterType(4,  2,  PTYPE_UBIN,    'YmUnits',   True,  None),
-    ParameterType(6,  3,  PTYPE_UBIN,    'XmSize',    True,  None),
-    ParameterType(9,  3,  PTYPE_UBIN,    'YmSize',    True,  None),
-    ParameterType(12, 1,  PTYPE_BYTE,    'MDDFlgs',   True,  None),
-    ParameterType(13, 0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  1,  PTYPE_CODE,    'XmBase',       True,  None),
+    ParameterType(1,  1,  PTYPE_CODE,    'YmBase',       True,  None),
+    ParameterType(2,  2,  PTYPE_UBIN,    'XmUnits',      True,  None),
+    ParameterType(4,  2,  PTYPE_UBIN,    'YmUnits',      True,  None),
+    ParameterType(6,  3,  PTYPE_UBIN,    'XmSize',       True,  None),
+    ParameterType(9,  3,  PTYPE_UBIN,    'YmSize',       True,  None),
+    ParameterType(12, 1,  PTYPE_BYTE,    'MDDFlgs',      True,  None),
+    ParameterType(13, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_MMC = [
@@ -331,8 +344,8 @@ SYNTAX_FIELD_MMC = [
 
 SYNTAX_FIELD_MPO = [
     [
-        ParameterType(0,  2,  PTYPE_UBIN,    'RGLength', True,  _this_group_length),
-        ParameterType(2,  0,  PTYPE_TRIPLET, 'Triplets', True,  None),
+        ParameterType(0,  2,  PTYPE_UBIN,    'RGLength',     True,  _this_group_length),
+        ParameterType(2,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
     ],
 ]
 
@@ -341,14 +354,14 @@ SYNTAX_FIELD_NOP = [
 ]
 
 SYNTAX_FIELD_PGD = [
-    ParameterType(0,  1,  PTYPE_CODE,    'XpgBase',   True,  None),
-    ParameterType(1,  1,  PTYPE_CODE,    'YpgBase',   True,  None),
-    ParameterType(2,  2,  PTYPE_UBIN,    'XpgUnits',  True,  None),
-    ParameterType(4,  2,  PTYPE_UBIN,    'YpgUnits',  True,  None),
-    ParameterType(6,  3,  PTYPE_UBIN,    'XpgSize',   True,  None),
-    ParameterType(9,  3,  PTYPE_UBIN,    'YpgSize',   True,  None),
-    ParameterType(12, 3,  PTYPE_BYTE,    'Reserved',  True,  None),
-    ParameterType(15, 0,  PTYPE_TRIPLET, 'Triplets',  False, None),
+    ParameterType(0,  1,  PTYPE_CODE,    'XpgBase',      True,  None),
+    ParameterType(1,  1,  PTYPE_CODE,    'YpgBase',      True,  None),
+    ParameterType(2,  2,  PTYPE_UBIN,    'XpgUnits',     True,  None),
+    ParameterType(4,  2,  PTYPE_UBIN,    'YpgUnits',     True,  None),
+    ParameterType(6,  3,  PTYPE_UBIN,    'XpgSize',      True,  None),
+    ParameterType(9,  3,  PTYPE_UBIN,    'YpgSize',      True,  None),
+    ParameterType(12, 3,  PTYPE_BYTE,    'Reserved',     True,  None),
+    ParameterType(15, 0,  PTYPE_TRIPLET, PNAME_TRIPLETS, False, None),
 ]
 
 SYNTAX_FIELD_PGP_1 = [
@@ -382,7 +395,7 @@ SYNTAX_FIELD_PTX = [
 ]
 
 SYNTAX_FIELD_TLE = [
-    ParameterType(0,  0,  PTYPE_TRIPLET, 'Triplets',  True,  None),
+    ParameterType(0,  0,  PTYPE_TRIPLET, PNAME_TRIPLETS, True,  None),
 ]
 
 # 2. Define its ID here...

@@ -23,6 +23,10 @@ import collections
 
 from . import fields
 
+# Parameter Names
+PNAME_T_ID = 'Tid'
+PNAME_T_LENGTH = 'Tlength'
+
 # Any triplet not explicity defined
 SYNTAX_TRIPLET_RAW = [
     fields.ParameterType(0,  0, fields.PTYPE_BYTE, 'Contents',  True,  None),
