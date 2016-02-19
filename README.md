@@ -1,4 +1,4 @@
-# python-afp
+# pyafp
 
 Python package and utilities for reading AFP (Advanced Function Presentation)
 files.
