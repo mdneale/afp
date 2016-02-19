@@ -3,6 +3,8 @@
 Python package and utilities for reading AFP (Advanced Function Presentation)
 files.
 
+https://pypi.python.org/pypi/afp
+
 ## License
 
 Copyright 2016 Matthew NEALE
