@@ -102,7 +102,10 @@ def print_params(params, ignore=(), indent=0, file=sys.stdout):
                 print_params(function, ignore=('LENGTH', 'TYPE'), indent=indent + 4, file=file)
                 i += 1
         elif name not in ignore:
-            print_line('{0}: {1}'.format(name, value), indent=indent, file=file)
+            try:
+                print_line('{0}: {1}'.format(name, value), indent=indent, file=file)
+            except UnicodeEncodeError:
+                print_line('{0}: <unprintable>'.format(name), indent=indent, file=file)
 
 def print_structured_field(sf, file=sys.stdout):
     """Print a structured field to the output."""
