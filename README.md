@@ -135,12 +135,8 @@ is not implemented today.
    implemented. If you need to implement more, see the instructions in
    fields.py, triplets.py or functions.py - it's not difficult.
 
-2. The optional record beginning marker is not supported. Files with no
-   record beginning markers will fail with the error 'Missing 0x5A carriage
-   control character'.
-
-3. Structured Field padding is not supported. If an AFP file includes padding
+2. Structured Field padding is not supported. If an AFP file includes padding
    then it will fail with the error 'Structured Field padding is not supported'.
 
-4. Writing AFP files. This would be a natural extension of the code we have
+3. Writing AFP files. This would be a natural extension of the code we have
    already.

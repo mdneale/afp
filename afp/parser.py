@@ -458,8 +458,9 @@ def read_structured_field(f, parser_config):
     b = read_byte(f)
     if b is not None:
         if b != CARRIAGE_CONTROL_CHAR:
-            raise exceptions.InvalidStructuredFieldError('Missing 0x{0:02X} carriage control character'.format(
-                CARRIAGE_CONTROL_CHAR))
+            # Carriage control character is optional, if none detected, rewind
+            # the byte read and continue as normal
+            f.seek(-1, 1)
         # Read the field length
         try:
             sf_length = read_ubin(f, 2)
